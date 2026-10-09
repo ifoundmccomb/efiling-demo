@@ -97,6 +97,11 @@ tr.row:last-child td{border-bottom:0}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
 .callout{margin:8px 16px 18px;padding:12px 14px;border-radius:5px;background:var(--warn-bg);color:var(--fg);border-left:4px solid var(--warn);font-size:14px}
 .callout b{color:var(--warn)}
+.sec{padding:14px 0 4px;border-top:1px solid var(--line)}
+.sec:first-child{border-top:0;padding-top:0}
+.sec-n{display:block;font-weight:600;font-family:var(--font-display);font-size:15px}
+.sec-lead{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.sec+.item{border-top:0}
 .done-banner{margin:0;padding:12px 16px;background:var(--ok-bg);color:var(--ok);font-weight:600;border-bottom:1px solid var(--line)}
 .foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 16px;border-top:1px solid var(--line)}
 .note{padding:14px 16px;background:var(--warn-bg);border-radius:6px;color:var(--fg)}
@@ -159,32 +164,34 @@ tr.row:last-child td{border-bottom:0}
 <script>
 (function(){
   var PHASE_A = [
-    {id:"a1", text:"Confirm the filing attorney responsible for the submission."},
-    {id:"a2", text:"Check the ECF chart for login credentials.", hint:"Credentials are listed on the ECF chart."},
-    {id:"a3", text:"Check the ECF chart for multi-factor authentication (MFA) access."},
-    {id:"a4", text:"Confirm all document types being submitted."},
-    {id:"sealed", kind:"sealed", text:"Will any documents be filed under seal?"},
-    {id:"s1", sub:true, needsSealed:true, text:"Review ECF procedures for sealed filings."},
-    {id:"s2", sub:true, needsSealed:true, text:"Review the applicable local rules."},
+    {id:"a1", sec:"Filing Attorney", text:"Confirm the filing attorney responsible for the submission."},
+    {id:"a2", sec:"ECF Access", lead:"Check the ECF chart to verify:", text:"Login credentials"},
+    {id:"a3", text:"Multi-factor authentication (MFA) access"},
+    {id:"a4", sec:"Documents to Be Filed", text:"Confirm all document types being submitted."},
+    {id:"sealed", kind:"sealed", sec:"Sealed Filings", text:"Determine whether any documents are being filed under seal."},
+    {id:"s1", sub:true, needsSealed:true, text:"Review ECF procedures."},
+    {id:"s2", sub:true, needsSealed:true, text:"Review applicable local rules."},
     {id:"s3", sub:true, needsSealed:true, text:"Review the assigned judge's individual rules and practices."},
-    {id:"a6", text:"Confirm exhibits comply with PDF size limitations."},
-    {id:"a7", text:"Decide whether after-hours filing support is needed, and arrange coverage if so."}
+    {id:"a6", sec:"Exhibits", text:"Confirm compliance with PDF size limitations."},
+    {id:"a7", sec:"After-Hours Coverage", text:"Determine whether after-hours filing support is required."},
+    {id:"a8", text:"Arrange coverage as needed."}
   ];
   var PHASE_B = [
-    {id:"b1", text:"Acknowledge receipt and tell the sender the filing is being reviewed and processed."},
-    {id:"b2", text:"Open and review each document individually."},
-    {id:"b3", text:"Confirm the caption is correct."},
-    {id:"b4", text:"Confirm the index number and document titles are correct."},
-    {id:"b5", text:"Check for required signatures."},
+    {id:"b1", sec:"Acknowledge Receipt", text:"Confirm receipt of the filing materials."},
+    {id:"b1b", text:"Advise that the filing is being reviewed and processed."},
+    {id:"b2", sec:"Review Documents", text:"Open and review each document individually."},
+    {id:"b3", sec:"Verify Case Information", text:"Confirm that the caption is correct."},
+    {id:"b4", text:"Confirm that the index number and document titles are correct."},
+    {id:"b5", sec:"Verify Signatures and Dates", text:"Check for required signatures."},
     {id:"b6", text:"Verify document dates."},
-    {id:"b7", text:"Review certificates of service and affidavits of service for completeness and accuracy."},
-    {id:"b8", text:"Consult ECF procedures, local rules, and judge-specific requirements as needed."},
-    {id:"b9", text:"Resolve open questions with the DCSA team, the filing attorney, or the ECF Help Desk or Clerk's Office."},
-    {id:"b10", text:"Notify the attorney and relevant team members of any issue that may delay filing."},
-    {id:"b11", added:true, text:"After filing, save the ECF receipt and send confirmation to the filing attorney."}
+    {id:"b7", text:"Review any certificates of service and affidavits of service for completeness and accuracy."},
+    {id:"b8", sec:"Review Applicable Rules", text:"Consult ECF procedures, local rules, and judge-specific requirements as needed."},
+    {id:"b9", sec:"Resolve Questions", text:"Seek guidance when necessary from the DCSA Team, the filing attorney, or the ECF Help Desk / Clerk's Office."},
+    {id:"b10", sec:"Communicate Issues Promptly", text:"Notify the attorney and relevant team members of any issues that may delay filing."},
+    {id:"b11", sec:"Closing Step", added:true, text:"After filing, save the ECF receipt and send confirmation to the filing attorney."}
   ];
 
-  var me = "local-user", KEY = "efiling-demo-v1", filings = [], selected = null, names = {};
+  var me = "local-user", KEY = "efiling-demo-v2", filings = [], selected = null, names = {};
   var confirmDelete = false;
 
   function $(id){ return document.getElementById(id); }
@@ -301,6 +308,15 @@ tr.row:last-child td{border-bottom:0}
     return li;
   }
 
+  function fillItems(f, list, ul, key){
+    var n = 0;
+    list.forEach(function(it){
+      if(it.needsSealed && f.sealed !== true) return;
+      if(it.sec){ n++; var h = el("li","sec"); h.appendChild(el("span","sec-n", n + ". " + it.sec)); if(it.lead) h.appendChild(el("span","sec-lead", it.lead)); ul.appendChild(h); }
+      ul.appendChild(itemNode(f, it, key));
+    });
+  }
+
   function renderDetail(){
     var box = $("detail");
     var f = filings.filter(function(x){ return x.id === selected; })[0];
@@ -321,21 +337,21 @@ tr.row:last-child td{border-bottom:0}
     var pa = el("div","phase");
     var top = el("div","phase-top"); top.appendChild(el("h3",null,"Before Filing Checklist")); top.appendChild(el("span","count", c.a[0] + "/" + c.a[1] + " completed")); pa.appendChild(top);
     var ul = el("ul","items");
-    PHASE_A.forEach(function(it){ if(it.needsSealed && f.sealed !== true) return; ul.appendChild(itemNode(f, it, "A")); });
+    fillItems(f, PHASE_A, ul, "A");
     pa.appendChild(ul); box.appendChild(pa);
     var call = el("div","callout");
-    var b = el("b",null,"Review the rules in advance"); call.appendChild(b);
-    call.appendChild(document.createTextNode(" for new case filings (always consult the case opening manual), sealed filings, and any unusual or non-routine filing."));
+    var b = el("b",null,"Important:"); call.appendChild(b);
+    call.appendChild(document.createTextNode(" Review applicable rules and procedures in advance for new case filings (always consult the case opening manual), sealed filings, and any unusual or non-routine filings."));
     box.appendChild(call);
 
     var pb = el("div","phase");
     var top2 = el("div","phase-top"); top2.appendChild(el("h3",null,"When Filing Documents Arrive Checklist")); top2.appendChild(el("span","count", c.b[0] + "/" + c.b[1] + " completed")); pb.appendChild(top2);
     var ul2 = el("ul","items");
-    PHASE_B.forEach(function(it){ ul2.appendChild(itemNode(f, it, "B")); });
+    fillItems(f, PHASE_B, ul2, "B");
     pb.appendChild(ul2); box.appendChild(pb);
     var call2 = el("div","callout");
-    call2.appendChild(el("b",null,"If you are unsure about any part of the filing,"));
-    call2.appendChild(document.createTextNode(" stop and ask before submitting. Accuracy is more important than speed."));
+    call2.appendChild(el("b",null,"Important:"));
+    call2.appendChild(document.createTextNode(" If you are unsure about any aspect of the filing, stop and seek clarification before submitting the filing. Accuracy is more important than speed."));
     box.appendChild(call2);
 
     var foot = el("div","foot");
@@ -388,7 +404,7 @@ tr.row:last-child td{border-bottom:0}
       ids.forEach(function(k,i){ var w = who[i % who.length]; out[k] = {on:true, by:w, at:at(dayOff,m)}; last = {by:w, at:at(dayOff,m)}; m += 4; });
       return {items:out, last:last};
     }
-    var A = ["a1","a2","a3","a4","a6","a7"], S = ["s1","s2","s3"], B = PHASE_B.map(function(i){ return i.id; });
+    var A = ["a1","a2","a3","a4","a6","a7","a8"], S = ["s1","s2","s3"], B = PHASE_B.map(function(i){ return i.id; });
     var r1 = run(A.concat(B), ["demo-alvarez","demo-chen"], -2, 5);
     var r2 = run(["a1","a2","a3","a4"].concat(S,["a6","a7"],B.slice(0,5)), ["demo-okafor","demo-chen"], 0, -60);
     var r3 = run(["a1","a2","a3"], ["demo-chen"], 0, 15);
