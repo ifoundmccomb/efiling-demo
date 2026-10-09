@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>E-Filing Checklist (Demo)</title>
+<meta name="robots" content="noindex">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}</style>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<style>
+/* Layout: a tracking table of filings on top, the selected filing's two-phase checklist below. */
+:root{
+  --bg:#F3F4F7; --surface:#FFFFFF; --fg:#17213A; --muted:#5B6479; --line:#D9DDE6;
+  --accent:#1F3A68; --accent-fg:#FFFFFF; --accent-soft:#E6ECF7;
+  --ok:#1E7A4F; --ok-bg:#E3F3EA; --warn:#8A5200; --warn-bg:#FBEFD9;
+  --font-display:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1424; --surface:#171E33; --fg:#E6E9F2; --muted:#9AA3B8; --line:#2A3350;
+    --accent:#8FB0F0; --accent-fg:#0F1424; --accent-soft:#1F2A47;
+    --ok:#5CC08C; --ok-bg:#16301F; --warn:#E0A54A; --warn-bg:#33270F; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1424; --surface:#171E33; --fg:#E6E9F2; --muted:#9AA3B8; --line:#2A3350;
+  --accent:#8FB0F0; --accent-fg:#0F1424; --accent-soft:#1F2A47;
+  --ok:#5CC08C; --ok-bg:#16301F; --warn:#E0A54A; --warn-bg:#33270F; color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5}
+*{box-sizing:border-box}
+.wrap{max-width:980px;margin-inline:auto;padding-inline:16px;padding-block:28px 56px;display:flex;flex-direction:column;gap:24px}
+.brand{display:block;width:240px;max-width:70%;height:auto;color:var(--fg);margin-bottom:18px}
+.themebtn{position:absolute;top:0;right:0;font-size:13px;padding:6px 12px}
+@media (max-width:480px){.brand{max-width:55%}}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;line-height:1.2}
+h1{font-size:30px;font-weight:700}
+h2{font-size:21px;font-weight:600}
+h3{font-size:17px;font-weight:600}
+.sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.panel-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--accent);color:var(--accent-fg);border:1px solid var(--accent);border-radius:5px;padding:8px 14px;font-weight:600}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.danger{background:transparent;color:var(--warn);border-color:var(--warn)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.newform{display:grid;grid-template-columns:2fr 1.4fr 1fr auto;gap:12px;align-items:end;padding:16px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px 10px;min-width:0;width:100%}
+
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px;font-variant-numeric:tabular-nums}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 16px;border-bottom:1px solid var(--line);font-weight:600}
+td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.row{cursor:pointer}
+tr.row:hover td{background:var(--accent-soft)}
+tr.row.sel td{background:var(--accent-soft)}
+tr.row:last-child td{border-bottom:0}
+.matter{font-weight:600}
+.mini{height:6px;border-radius:3px;background:var(--line);overflow:hidden;min-width:90px}
+.mini>i{display:block;height:100%;background:var(--accent)}
+.mini.done>i{background:var(--ok)}
+.prog{display:flex;align-items:center;gap:10px}
+.pill{display:inline-block;white-space:nowrap;font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;border:1px solid var(--line);color:var(--muted)}
+.pill.ok{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.pill.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.empty{padding:28px 16px;color:var(--muted)}
+
+.detail-meta{display:flex;flex-wrap:wrap;gap:20px;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--bg)}
+.detail-meta div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.phase{padding:18px 16px 8px}
+.phase+.phase{border-top:1px solid var(--line)}
+.phase-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.count{font-family:var(--font-mono);font-size:13px;color:var(--muted)}
+.items{list-style:none;margin:0;padding:0}
+.item{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item.sub{margin-left:30px;padding-block:8px}
+.cb{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);cursor:pointer}
+.item-main{min-width:0}
+.item-text{font-weight:500}
+.item.on .item-text{color:var(--muted)}
+.stamp{font-family:var(--font-mono);font-size:12px;color:var(--ok);margin-top:2px}
+.hint{font-size:13px;color:var(--muted);margin-top:2px}
+.tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-left:8px;color:var(--muted);font-weight:600;white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-top:6px}
+.seg button{background:var(--surface);color:var(--fg);border:0;padding:6px 16px;font-weight:600}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.callout{margin:8px 16px 18px;padding:12px 14px;border-radius:5px;background:var(--warn-bg);color:var(--fg);border-left:4px solid var(--warn);font-size:14px}
+.callout b{color:var(--warn)}
+.done-banner{margin:0;padding:12px 16px;background:var(--ok-bg);color:var(--ok);font-weight:600;border-bottom:1px solid var(--line)}
+.foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 16px;border-top:1px solid var(--line)}
+.note{padding:14px 16px;background:var(--warn-bg);border-radius:6px;color:var(--fg)}
+@media (max-width:720px){
+  .newform{grid-template-columns:1fr}
+  h1{font-size:25px}
+  .item.sub{margin-left:16px}
+}
+@media (prefers-reduced-motion:no-preference){.mini>i{transition:width .25s ease}}
+</style>
+
+<main class="wrap">
+  <header style="position:relative">
+    <button type="button" class="btn ghost themebtn" id="themebtn" aria-label="Switch color theme">Dark mode</button>
+    <svg class="brand" role="img" aria-label="Sample Law Group" viewBox="0 0 260 48" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="46" height="46" rx="9" fill="var(--accent)"/><path d="M13 25l7 7 15-16" fill="none" stroke="var(--accent-fg)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><text x="60" y="23" font-family="Source Serif 4, Georgia, serif" font-size="20" font-weight="700" fill="currentColor">Sample Law Group</text><text x="60" y="41" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="11" letter-spacing="2" fill="currentColor" opacity=".7">FILING DESK</text></svg>
+    <div class="label">Filing procedure</div>
+    <h1>E-Filing Checklist</h1>
+    <p class="sub">Start a filing, then check each step as it is done. Every check records who did it and when, so the team can see where each filing stands.</p>
+  </header>
+
+  <div class="note"><b>Demo only.</b> Do not enter real case or client information. Everything you enter stays in this browser on this computer; nothing is sent anywhere.</div>
+
+
+  <section class="panel" id="newpanel">
+    <div class="panel-head"><h2>Start a filing</h2><div class="field" style="flex-direction:row;align-items:center;gap:8px"><label class="label" for="f-me">Your name</label><input id="f-me" maxlength="60" placeholder="Shown on your checks" autocomplete="off" style="font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:6px 10px;width:200px"></div></div>
+    <form class="newform" id="newform">
+      <div class="field"><label class="label" for="f-matter">Case or matter</label><input id="f-matter" required maxlength="120" placeholder="Case name or index number" autocomplete="off"></div>
+      <div class="field"><label class="label" for="f-atty">Filing attorney</label><input id="f-atty" required maxlength="80" placeholder="Name" autocomplete="off"></div>
+      <div class="field"><label class="label" for="f-due">Filing deadline</label><input id="f-due" type="date"></div>
+      <button class="btn" type="submit" id="f-go">Start checklist</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Filings</h2><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span class="count" id="tally"></span><button type="button" class="btn ghost" id="resetbtn" style="font-size:13px;padding:6px 12px">Reset demo data</button></div></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Matter</th><th>Filing attorney</th><th>Deadline</th><th>Progress</th><th>Last activity</th><th>Status</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div id="rows-empty" class="empty">No filings yet. Start one above and it will appear here.</div>
+  </section>
+
+  <section class="panel" id="detail" hidden></section>
+</main>
+
+<script>
+(function(){
+  var root=document.documentElement, b=document.getElementById("themebtn");
+  var mq=window.matchMedia?matchMedia("(prefers-color-scheme: dark)"):null;
+  function cur(){ return root.getAttribute("data-theme") || (mq&&mq.matches?"dark":"light"); }
+  function label(){ var d=cur()==="dark"; b.textContent=d?"Light mode":"Dark mode"; b.setAttribute("aria-pressed",String(d)); }
+  try{ var saved=localStorage.getItem("efiling-theme"); if(saved==="dark"||saved==="light") root.setAttribute("data-theme",saved); }catch(e){}
+  b.addEventListener("click",function(){ var n=cur()==="dark"?"light":"dark"; root.setAttribute("data-theme",n); try{localStorage.setItem("efiling-theme",n);}catch(e){} label(); });
+  if(mq&&mq.addEventListener) mq.addEventListener("change",label);
+  label();
+})();
+</script>
+<script>
+(function(){
+  var PHASE_A = [
+    {id:"a1", text:"Confirm the filing attorney responsible for the submission."},
+    {id:"a2", text:"Check the ECF chart for login credentials.", hint:"Credentials are listed on the ECF chart."},
+    {id:"a3", text:"Check the ECF chart for multi-factor authentication (MFA) access."},
+    {id:"a4", text:"Confirm all document types being submitted."},
+    {id:"sealed", kind:"sealed", text:"Will any documents be filed under seal?"},
+    {id:"s1", sub:true, needsSealed:true, text:"Review ECF procedures for sealed filings."},
+    {id:"s2", sub:true, needsSealed:true, text:"Review the applicable local rules."},
+    {id:"s3", sub:true, needsSealed:true, text:"Review the assigned judge's individual rules and practices."},
+    {id:"a6", text:"Confirm exhibits comply with PDF size limitations."},
+    {id:"a7", text:"Decide whether after-hours filing support is needed, and arrange coverage if so."}
+  ];
+  var PHASE_B = [
+    {id:"b1", text:"Acknowledge receipt and tell the sender the filing is being reviewed and processed."},
+    {id:"b2", text:"Open and review each document individually."},
+    {id:"b3", text:"Confirm the caption is correct."},
+    {id:"b4", text:"Confirm the index number and document titles are correct."},
+    {id:"b5", text:"Check for required signatures."},
+    {id:"b6", text:"Verify document dates."},
+    {id:"b7", text:"Review certificates of service and affidavits of service for completeness and accuracy."},
+    {id:"b8", text:"Consult ECF procedures, local rules, and judge-specific requirements as needed."},
+    {id:"b9", text:"Resolve open questions with the DCSA team, the filing attorney, or the ECF Help Desk or Clerk's Office."},
+    {id:"b10", text:"Notify the attorney and relevant team members of any issue that may delay filing."},
+    {id:"b11", added:true, text:"After filing, save the ECF receipt and send confirmation to the filing attorney."}
+  ];
+
+  var me = "local-user", KEY = "efiling-demo-v1", filings = [], selected = null, names = {};
+  var confirmDelete = false;
+
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls, text){ var e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+
+  function required(f){
+    var a = PHASE_A.filter(function(i){ return !i.needsSealed || f.sealed === true; });
+    return { A:a, B:PHASE_B };
+  }
+  function isOn(f, it){
+    if(it.kind === "sealed") return f.sealed === true || f.sealed === false;
+    var x = (f.items || {})[it.id];
+    return !!(x && x.on);
+  }
+  function counts(f){
+    var r = required(f), n = 0, t = 0, na = 0, ta = 0, nb = 0, tb = 0;
+    r.A.forEach(function(i){ ta++; if(isOn(f,i)){ na++; } });
+    r.B.forEach(function(i){ tb++; if(isOn(f,i)){ nb++; } });
+    return {done:na+nb, total:ta+tb, a:[na,ta], b:[nb,tb]};
+  }
+  function fmt(ts){
+    if(!ts) return "";
+    var d = new Date(ts);
+    return d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  }
+  function fmtDue(s){
+    if(!s) return "None set";
+    var p = s.split("-"); if(p.length !== 3) return s;
+    return new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+  }
+  function who(id){
+    if(!id) return "Someone";
+    var p = names[id];
+    return (p && p.name) || "Someone";
+  }
+  function resolveNames(){
+    var ids = {};
+    filings.forEach(function(f){
+      if(f.createdBy) ids[f.createdBy] = 1;
+      if(f.sealedBy) ids[f.sealedBy] = 1;
+      if(f.lastBy) ids[f.lastBy] = 1;
+      Object.keys(f.items || {}).forEach(function(k){ var x = f.items[k]; if(x && x.by) ids[x.by] = 1; });
+    });
+    var list = Object.keys(ids);
+    if(!list.length) return;
+    names = {};
+    names["local-user"] = {name: myName() || "You"};
+    filings.forEach(function(f){ var p = f.people || {}; Object.keys(p).forEach(function(k){ if(!names[k] || !names[k].name) names[k] = {name:p[k]}; }); });
+  }
+
+  function statusOf(f){
+    var c = counts(f);
+    if(c.done === 0) return {t:"Not started", c:""};
+    if(c.done === c.total) return {t:"Complete", c:"ok"};
+    return {t:"In progress", c:"warn"};
+  }
+
+  function renderTable(){
+    var body = $("rows"); body.textContent = "";
+    $("rows-empty").hidden = filings.length > 0;
+    var open = filings.filter(function(f){ return counts(f).done < counts(f).total; }).length;
+    $("tally").textContent = filings.length ? (open + " open, " + (filings.length - open) + " complete") : "";
+    filings.forEach(function(f){
+      var c = counts(f), st = statusOf(f);
+      var tr = el("tr","row" + (selected === f.id ? " sel" : ""));
+      tr.tabIndex = 0;
+      tr.addEventListener("click", function(){ select(f.id); });
+      tr.addEventListener("keydown", function(e){ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); select(f.id); } });
+      var td1 = el("td"); td1.appendChild(el("div","matter",f.matter)); tr.appendChild(td1);
+      tr.appendChild(el("td",null,f.attorney));
+      tr.appendChild(el("td",null,fmtDue(f.due)));
+      var td4 = el("td"); var pr = el("div","prog");
+      var bar = el("div","mini" + (c.done === c.total ? " done" : "")); var i = el("i"); i.style.width = Math.round(100*c.done/c.total) + "%"; bar.appendChild(i);
+      pr.appendChild(bar); pr.appendChild(el("span","count", c.done + "/" + c.total)); td4.appendChild(pr); tr.appendChild(td4);
+      var last = f.updatedAt ? (fmt(f.updatedAt) + (f.lastBy ? " by " + who(f.lastBy) : "")) : "";
+      tr.appendChild(el("td",null,last));
+      var td6 = el("td"); td6.appendChild(el("span","pill " + st.c, st.t)); tr.appendChild(td6);
+      body.appendChild(tr);
+    });
+  }
+
+  function itemNode(f, it, phaseKey){
+    var li = el("li","item" + (it.sub ? " sub" : ""));
+    var on = isOn(f, it);
+    if(on) li.classList.add("on");
+    if(it.kind === "sealed"){
+      li.appendChild(el("span"));
+      var m = el("div","item-main");
+      m.appendChild(el("div","item-text",it.text));
+      m.appendChild(el("div","hint","Sealed filings have extra rules to review before filing."));
+      var seg = el("div","seg"); seg.setAttribute("role","group"); seg.setAttribute("aria-label","Sealed documents");
+      [["No",false],["Yes",true]].forEach(function(o){
+        var b = el("button",null,o[0]); b.type = "button";
+        b.setAttribute("aria-pressed", String(f.sealed === o[1]));
+        b.addEventListener("click", function(){ setSealed(f, o[1]); });
+        seg.appendChild(b);
+      });
+      m.appendChild(seg);
+      if(on && f.sealedAt){ m.appendChild(el("div","stamp","Answered by " + who(f.sealedBy) + ", " + fmt(f.sealedAt))); }
+      li.appendChild(m);
+      return li;
+    }
+    var cb = document.createElement("input"); cb.type = "checkbox"; cb.className = "cb"; cb.checked = on; cb.id = "cb-" + it.id;
+    cb.addEventListener("change", function(){ toggle(f, it, cb.checked); });
+    li.appendChild(cb);
+    var main = el("div","item-main");
+    var lab = document.createElement("label"); lab.htmlFor = cb.id; lab.className = "item-text"; lab.textContent = it.text;
+    if(it.added){ lab.appendChild(el("span","tag","Added")); }
+    main.appendChild(lab);
+    if(it.hint) main.appendChild(el("div","hint",it.hint));
+    var x = (f.items || {})[it.id];
+    if(on && x){ main.appendChild(el("div","stamp","Checked by " + who(x.by) + ", " + fmt(x.at))); }
+    li.appendChild(main);
+    return li;
+  }
+
+  function renderDetail(){
+    var box = $("detail");
+    var f = filings.filter(function(x){ return x.id === selected; })[0];
+    if(!f){ box.hidden = true; box.textContent = ""; return; }
+    box.hidden = false; box.textContent = "";
+    var c = counts(f), r = required(f);
+    var head = el("div","panel-head");
+    var h = el("div"); h.appendChild(el("div","label","Filing")); h.appendChild(el("h2",null,f.matter)); head.appendChild(h);
+    head.appendChild(el("span","count", c.done + " of " + c.total + " steps checked"));
+    box.appendChild(head);
+    if(c.done === c.total){ box.appendChild(el("p","done-banner","All steps are checked for this filing.")); }
+    var meta = el("div","detail-meta");
+    [["Filing attorney", f.attorney],["Deadline", fmtDue(f.due)],["Started by", who(f.createdBy) + ", " + fmt(f.createdAt)]].forEach(function(p){
+      var d = el("div"); d.appendChild(el("span","label",p[0])); d.appendChild(el("span",null,p[1])); meta.appendChild(d);
+    });
+    box.appendChild(meta);
+
+    var pa = el("div","phase");
+    var top = el("div","phase-top"); top.appendChild(el("h3",null,"Before filing")); top.appendChild(el("span","count", c.a[0] + "/" + c.a[1])); pa.appendChild(top);
+    var ul = el("ul","items");
+    PHASE_A.forEach(function(it){ if(it.needsSealed && f.sealed !== true) return; ul.appendChild(itemNode(f, it, "A")); });
+    pa.appendChild(ul); box.appendChild(pa);
+    var call = el("div","callout");
+    var b = el("b",null,"Review the rules in advance"); call.appendChild(b);
+    call.appendChild(document.createTextNode(" for new case filings (always consult the case opening manual), sealed filings, and any unusual or non-routine filing."));
+    box.appendChild(call);
+
+    var pb = el("div","phase");
+    var top2 = el("div","phase-top"); top2.appendChild(el("h3",null,"When filing documents arrive")); top2.appendChild(el("span","count", c.b[0] + "/" + c.b[1])); pb.appendChild(top2);
+    var ul2 = el("ul","items");
+    PHASE_B.forEach(function(it){ ul2.appendChild(itemNode(f, it, "B")); });
+    pb.appendChild(ul2); box.appendChild(pb);
+    var call2 = el("div","callout");
+    call2.appendChild(el("b",null,"If you are unsure about any part of the filing,"));
+    call2.appendChild(document.createTextNode(" stop and ask before submitting. Accuracy is more important than speed."));
+    box.appendChild(call2);
+
+    var foot = el("div","foot");
+    var close = el("button","btn ghost","Close"); close.type = "button"; close.addEventListener("click", function(){ selected = null; confirmDelete = false; renderAll(); });
+    foot.appendChild(close);
+    var del = el("button","btn danger", confirmDelete ? "Click again to delete this filing" : "Delete filing"); del.type = "button";
+    del.addEventListener("click", function(){
+      if(!confirmDelete){ confirmDelete = true; renderDetail(); return; }
+      confirmDelete = false; selected = null;
+      filings = filings.filter(function(x){ return x.id !== f.id; }); save(); refresh();
+    });
+    foot.appendChild(del);
+    box.appendChild(foot);
+  }
+
+  function renderAll(){ renderTable(); renderDetail(); }
+  function select(id){ selected = id; confirmDelete = false; renderAll(); var d = $("detail"); if(d && !d.hidden && d.scrollIntoView){ d.scrollIntoView({block:"start",behavior:"smooth"}); } }
+
+  function myName(){ try { return localStorage.getItem("efiling-demo-name") || ""; } catch(e){ return ""; } }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(filings)); } catch(e){} }
+  function write(f, patch){
+    patch.updatedAt = Date.now(); patch.lastBy = me;
+    var items = patch.items; delete patch.items;
+    Object.assign(f, patch);
+    if(items){ f.items = f.items || {}; Object.keys(items).forEach(function(k){ f.items[k] = items[k]; }); }
+    save(); refresh();
+  }
+  function toggle(f, it, on){
+    var patch = {items:{}}; patch.items[it.id] = {on:on, by:me, at:Date.now()};
+    write(f, patch);
+  }
+  function setSealed(f, val){
+    write(f, {sealed:val, sealedBy:me, sealedAt:Date.now()});
+  }
+  function refresh(){
+    filings.sort(function(a,b){ return b.createdAt - a.createdAt; });
+    resolveNames();
+    if(selected && !filings.some(function(f){ return f.id === selected; })) selected = null;
+    renderAll();
+  }
+
+  function seed(){
+    var DAY = 86400000, now = Date.now();
+    var base = new Date(); base.setHours(9,0,0,0); base = base.getTime();
+    function at(dayOff, min){ return base + dayOff*DAY + min*60000; }
+    function due(dayOff){ var x = new Date(now + dayOff*DAY); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); }
+    var P = {"demo-alvarez":"Maria Alvarez","demo-chen":"Kevin Chen","demo-okafor":"Grace Okafor"};
+    function run(ids, who, dayOff, startMin){
+      var out = {}, m = startMin, last = null;
+      ids.forEach(function(k,i){ var w = who[i % who.length]; out[k] = {on:true, by:w, at:at(dayOff,m)}; last = {by:w, at:at(dayOff,m)}; m += 4; });
+      return {items:out, last:last};
+    }
+    var A = ["a1","a2","a3","a4","a6","a7"], S = ["s1","s2","s3"], B = PHASE_B.map(function(i){ return i.id; });
+    var r1 = run(A.concat(B), ["demo-alvarez","demo-chen"], -2, 5);
+    var r2 = run(["a1","a2","a3","a4"].concat(S,["a6","a7"],B.slice(0,5)), ["demo-okafor","demo-chen"], 0, -60);
+    var r3 = run(["a1","a2","a3"], ["demo-chen"], 0, 15);
+    return [
+      {id:"demo-1", matter:"DEMO: Harper v. Northgate Logistics, 1:26-cv-04417", attorney:"J. Whitfield", due:due(-1), createdBy:"demo-alvarez", createdAt:at(-2,-10), items:r1.items, sealed:false, sealedBy:"demo-alvarez", sealedAt:at(-2,20), updatedAt:r1.last.at, lastBy:r1.last.by, people:P},
+      {id:"demo-2", matter:"DEMO: In re Meridian Capital Securities Litig., 1:25-cv-09132", attorney:"S. Patel", due:due(1), createdBy:"demo-okafor", createdAt:at(0,-80), items:r2.items, sealed:true, sealedBy:"demo-okafor", sealedAt:at(0,-45), updatedAt:r2.last.at, lastBy:r2.last.by, people:P},
+      {id:"demo-3", matter:"DEMO: Brightline Pharma v. Calder Labs, 1:26-cv-02288", attorney:"R. Donnelly", due:due(4), createdBy:"demo-chen", createdAt:at(0,5), items:r3.items, updatedAt:r3.last.at, lastBy:r3.last.by, people:P},
+      {id:"demo-4", matter:"DEMO: Okonkwo v. Rivermark Bank, Index No. 655210/2026", attorney:"L. Moreno", due:due(7), createdBy:"demo-alvarez", createdAt:at(0,30), items:{}, updatedAt:at(0,30), lastBy:"demo-alvarez", people:P}
+    ];
+  }
+
+  function start(){
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){ stored = null; }
+    filings = Array.isArray(stored) ? stored : seed();
+    save();
+
+    var meIn = $("f-me"); meIn.value = myName();
+    meIn.addEventListener("input", function(){ try { localStorage.setItem("efiling-demo-name", meIn.value.trim()); } catch(e){} refresh(); });
+
+    $("newform").addEventListener("submit", function(ev){
+      ev.preventDefault();
+      var rec = {id:"f" + Date.now().toString(36), matter:$("f-matter").value.trim(), attorney:$("f-atty").value.trim(), due:$("f-due").value || "", createdBy:me, createdAt:Date.now(), updatedAt:Date.now(), lastBy:me, items:{}};
+      filings.push(rec); save();
+      $("newform").reset(); selected = rec.id; refresh();
+    });
+
+    var resetArmed = false, rb = $("resetbtn");
+    rb.addEventListener("click", function(){
+      if(!resetArmed){ resetArmed = true; rb.textContent = "Click again to reset"; setTimeout(function(){ resetArmed = false; rb.textContent = "Reset demo data"; }, 4000); return; }
+      resetArmed = false; rb.textContent = "Reset demo data";
+      filings = seed(); selected = null; save(); refresh();
+    });
+    refresh();
+  }
+  start();
+})();
+</script>
+</body>
+</html>
